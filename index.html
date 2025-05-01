@@ -1,151 +1,159 @@
-<html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Sensor Data with localStorage</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+</head>
+<body>
+  <h1>Data from accelerometer</h1>
+  <button onclick="requestMotionPermission()">Get permission and start sensing</button>
+  <button onclick="stopDeviceMotion()">Stop</button>
+  <button onclick="downloadCSV('acc')">Download ACC CSV</button>
+  <button onclick="clearData('acc')">Clear ACC Data</button>
+  
+  <h2>Acceleration</h2>
+  <p>X: <span id="accel-x">0</span></p>
+  <p>Y: <span id="accel-y">0</span></p>
+  <p>Z: <span id="accel-z">0</span></p>
+  
+  <h2>CSV data from Accelerometer</h2>
+  <textarea id="acc-csv" style="width:300px;height:200px;"></textarea>
+  
+  <hr>
+  
+  <h1>Data from Magnetometer</h1>
+  <button onclick="requestOrientationPermission()">Get permission and start sensing</button>
+  <button onclick="stopDeviceOrientation()">Stop</button>
+  <button onclick="downloadCSV('ori')">Download ORI CSV</button>
+  <button onclick="clearData('ori')">Clear ORI Data</button>
+  
+  <p>Absolute: <span id="ori-abs">0</span></p>
+  <p>Alpha: <span id="ori-a">0</span></p>
+  <p>Beta:  <span id="ori-b">0</span></p>
+  <p>Gamma: <span id="ori-g">0</span></p>
+  
+  <h2>CSV data from Magnetometer</h2>
+  <textarea id="ori-csv" style="width:300px;height:200px;"></textarea>
 
-  <head>
-    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-  </head>
-
-  <body>
-
-    <h1>Data from accelerometer</h1>
-      <button onclick="requestMotionPermission();">Get permission and start sensing</button>
-      <button onclick="stopDeviceMotion();">Stop</button>
-
-      <h2>Acceleration</h2>
-        <p> X: <span id="accel-x">0</span> </p> 
-        <p> Y: <span id="accel-y">0</span> </p> 
-        <p> Z: <span id="accel-z">0</span> </p> 
-
-      <h2>Acceleration (including gravity)</h2>
-        <p> X: <span id="accel-g-x">0</span> </p> 
-        <p> Y: <span id="accel-g-y">0</span> </p> 
-        <p> Z: <span id="accel-g-z">0</span> </p> 
-
-      <h2>Rotation rate</h2>
-        <p> Alpha: <span id="rotate-a">0</span> </p> 
-        <p> Beta: <span id="rotate-b">0</span> </p> 
-        <p> Gamma: <span id="rotate-g">0</span> </p> 
-
-      <h2>CSV data from Accelerometer</h2>
-	<textarea id="acc-csv" style="width:300px;height:300px;"></textarea>
-	
-    <h1>Data from Magnetometer</h1>
-        <button onclick="requestOrientationPermission();">Get permission and start sensing</button>
-        <button onclick="stopDeviceOrientation();">Stop</button>
-
-      <p> Absolute: <span id="ori-abs">0</span> </p> 
-      <p> Alpha: <span id="ori-a">0</span> </p> 
-      <p> Beta: <span id="ori-b">0</span> </p> 
-      <p> Gamma: <span id="ori-g">0</span> </p> 
-
-      <h2>CSV data from Magnetometer</h2>
-	<textarea id="ori-csv" style="width:300px;height:300px;"></textarea>	
-
-  </body>
-
-<!--  ===========================================  -->
-<script type="text/javascript">
-alert("Welcome to sample page 4!");
-
-//////////////////////////////////////////////////////
-//Function to get sensor access permission from the browser
-//////////////////////////////////////////////////////
-function requestMotionPermission(){
-  if ( DeviceMotionEvent &&
-       typeof DeviceMotionEvent.requestPermission === 'function' ){
-      // iOS 13+ 縺ｮ Safari
-      // 險ｱ蜿ｯ繧貞叙蠕�
-      DeviceMotionEvent.requestPermission().then(permissionState => {
-	  if (permissionState === 'granted') {
-              // 險ｱ蜿ｯ繧貞ｾ励ｉ繧後◆蝣ｴ蜷医‥evicemotion繧偵う繝吶Φ繝医Μ繧ｹ繝翫�縺ｫ霑ｽ蜉�
-	      window.addEventListener("devicemotion", handleAcceleration, false);
-	  } else {
-              // 險ｱ蜿ｯ繧貞ｾ励ｉ繧後↑縺九▲縺溷�ｴ蜷医�蜃ｦ逅�
-	      console.log("Perrmission not granted!");
-	      alert("Perrmission not granted!");
-	  }
-      }).catch(console.error) // https騾壻ｿ｡縺ｧ縺ｪ縺��ｴ蜷医↑縺ｩ縺ｧ險ｱ蜿ｯ繧貞叙蠕励〒縺阪↑縺九▲縺溷�ｴ蜷�
-
-  } else {
-      //For other devices
-      console.log("detected other device. so adding listener...");
-      window.addEventListener("devicemotion", handleAcceleration, false);
+<script>
+  // --- ストレージ操作ユーティリティ ---
+  function loadData(key) {
+    return JSON.parse(localStorage.getItem(key) || '[]');
+  }
+  function saveData(key, arr) {
+    localStorage.setItem(key, JSON.stringify(arr));
   }
 
-}
-
-function stopDeviceMotion(){ 
-    window.removeEventListener("devicemotion", handleAcceleration, false);
-}
-
-
-//////////////////////////////////////////////////////
-//Function to get sensor access permission from the browser
-//////////////////////////////////////////////////////
-function requestOrientationPermission(){
-  if ( DeviceOrientationEvent &&
-       typeof DeviceOrientationEvent.requestPermission === 'function' ) {
-      // iOS 13+ 縺ｮ Safari
-      // 險ｱ蜿ｯ繧貞叙蠕�
-      DeviceOrientationEvent.requestPermission().then(permissionState => {
-	  if (permissionState === 'granted') {
-              // 險ｱ蜿ｯ繧貞ｾ励ｉ繧後◆蝣ｴ蜷医‥eviceorientation繧偵う繝吶Φ繝医Μ繧ｹ繝翫�縺ｫ霑ｽ蜉�
-	      window.addEventListener("deviceorientation", handleOrientation, true);
-	  } else {
-              // 險ｱ蜿ｯ繧貞ｾ励ｉ繧後↑縺九▲縺溷�ｴ蜷医�蜃ｦ逅�
-	      console.log("Perrmission not granted!");
-	      alert("Perrmission not granted!");
-	  }
-      })
-	  .catch(console.error) // https騾壻ｿ｡縺ｧ縺ｪ縺��ｴ蜷医↑縺ｩ縺ｧ險ｱ蜿ｯ繧貞叙蠕励〒縺阪↑縺九▲縺溷�ｴ
-  } else {
-    console.log("detected other device. so adding listener...");
-    window.addEventListener("deviceorientation", handleOrientation, true);
+  function renderCSV(type) {
+    const key = type==="acc" ? "accData" : "oriData";
+    const data = loadData(key);
+    const lines = data.map(d => {
+      if(type==="acc"){
+        return `${d.t},acc,${d.x},${d.y},${d.z}`;
+      } else {
+        return `${d.t},ori,${d.abs},${d.a},${d.b},${d.g}`;
+      }
+    });
+    $('#' + type + '-csv').val(lines.join('\n'));
   }
-}
 
-function stopDeviceOrientation(){ 
+  function downloadCSV(type) {
+    const textarea = document.getElementById(type + '-csv');
+    const blob = new Blob([textarea.value], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${type}_data_${new Date().toISOString()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function clearData(type) {
+    const key = type==="acc" ? "accData" : "oriData";
+    localStorage.removeItem(key);
+    renderCSV(type);
+  }
+
+  // --- 加速度センサー ---
+  function handleAcceleration(ev) {
+    $('#accel-x').text(ev.acceleration.x);
+    $('#accel-y').text(ev.acceleration.y);
+    $('#accel-z').text(ev.acceleration.z);
+
+    const rec = {
+      t: Date.now(),
+      x: ev.acceleration.x,
+      y: ev.acceleration.y,
+      z: ev.acceleration.z
+    };
+    const arr = loadData('accData');
+    arr.push(rec);
+    saveData('accData', arr);
+    renderCSV('acc');
+  }
+
+  function requestMotionPermission(){
+    if (DeviceMotionEvent &&
+        typeof DeviceMotionEvent.requestPermission === 'function') {
+      DeviceMotionEvent.requestPermission()
+        .then(permissionState => {
+          if (permissionState === 'granted')
+            window.addEventListener("devicemotion", handleAcceleration);
+        })
+        .catch(console.error);
+    } else {
+      window.addEventListener("devicemotion", handleAcceleration);
+    }
+  }
+
+  function stopDeviceMotion(){
+    window.removeEventListener("devicemotion", handleAcceleration);
+  }
+
+  // --- 磁気センサー ---
+  function handleOrientation(ev){
+    $('#ori-abs').text(ev.absolute);
+    $('#ori-a').text(ev.alpha);
+    $('#ori-b').text(ev.beta);
+    $('#ori-g').text(ev.gamma);
+
+    const rec = {
+      t: Date.now(),
+      abs: ev.absolute,
+      a: ev.alpha,
+      b: ev.beta,
+      g: ev.gamma
+    };
+    const arr = loadData('oriData');
+    arr.push(rec);
+    saveData('oriData', arr);
+    renderCSV('ori');
+  }
+
+  function requestOrientationPermission(){
+    if (DeviceOrientationEvent &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission()
+        .then(permissionState => {
+          if (permissionState === 'granted')
+            window.addEventListener("deviceorientation", handleOrientation, true);
+        })
+        .catch(console.error);
+    } else {
+      window.addEventListener("deviceorientation", handleOrientation, true);
+    }
+  }
+
+  function stopDeviceOrientation(){
     window.removeEventListener("deviceorientation", handleOrientation, true);
-}
+  }
 
-
-////////////////////////////////////////////////////////////////////
-//Function(1): to handle acceleration data
-//  - This function will be called about 10-50 times per second
-////////////////////////////////////////////////////////////////////
-function handleAcceleration(ev){
-    //alert("" + event.acceleration.x + " " + event.acceleration.y + " " + event.acceleration.z);
-    $('#accel-x').text( ev.acceleration.x );
-    $('#accel-y').text( ev.acceleration.y );
-    $('#accel-z').text( ev.acceleration.z );
-
-    var e_time = new Date();
-    $('#acc-csv').append(e_time.getTime() + ",acc ," + ev.acceleration.x + "," + ev.acceleration.y + "," + ev.acceleration.z + "\n"); 
-
-    $('#accel-g-x').text( ev.accelerationIncludingGravity.x );
-    $('#accel-g-y').text( ev.accelerationIncludingGravity.y );
-    $('#accel-g-z').text( ev.accelerationIncludingGravity.z );
-
-    $('#rotate-a').text( ev.rotationRate.alpha );
-    $('#rotate-b').text( ev.rotationRate.beta );
-    $('#rotate-g').text( ev.rotationRate.gamma );
-}
-
-////////////////////////////////////////////////////////////////////
-//Function(2): to handle magnetometer data
-//  - This function will be called about 10-50 times per second
-////////////////////////////////////////////////////////////////////
-function handleOrientation(ev){
-    $('#ori-abs').text( ev.absolute );
-    $('#ori-a').text( ev.alpha );
-    $('#ori-b').text( ev.beta );
-    $('#ori-g').text( ev.gamma );
-
-    var e_time = new Date();
-    $('#ori-csv').append(e_time.getTime() + ", ori," + ev.absolute + "," + ev.alpha + "," + ev.beta + "," + ev.gamma + "\n");
-}
-
+  // --- 初期表示で既存データをレンダリング ---
+  $(window).on('load', () => {
+    renderCSV('acc');
+    renderCSV('ori');
+  });
 </script>
-<!--  ===========================================  -->
-
-
+</body>
 </html>
